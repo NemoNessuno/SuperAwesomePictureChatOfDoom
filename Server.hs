@@ -7,6 +7,7 @@ import Control.Monad
 import Data.List (delete)
 import Data.Maybe
 import Data.Word
+import Data.Text (pack)
 
 import Network
 
@@ -15,6 +16,7 @@ import System.Environment
 
 import Text.Printf
 
+import StringSplitter
 
 defaultPort = 4711 :: Word16
 
@@ -47,7 +49,7 @@ data CState = Draw | Guess | Blocked | Uninitialized
 data Action = Send Client String | Register Client | Unregister Client
 
 mkClient :: (Handle, HostName, PortNumber) -> Client
-mkClient (conn, host, port) = Client conn host port "Default" 5 Guess
+mkClient (conn, host, port) = Client conn host port "Default" 5 Uninitialized
 
 main = withSocketsDo $ do
     port    <- maybe defaultPort read <$> listToMaybe <$> getArgs
@@ -74,23 +76,21 @@ dispatcher ctrl clients objects = do
     clients' <- case action of
 
         Send from str -> do
-            printf "%s sends: %s\n" (show from) (show str)
-            case str of
-              "[User-Name]:" -> case (state from) of
-                Uninitialized -> return $ delete from clients : from' 
-                  where from' = if clients == [] then from {state = Draw, userName = str} else from {state = Guess, userName = str} -- Hier muss man den UserName natürlich vorher auspacken!
-                _ -> return $ delete from clients : from'
-                  where from' = from {userName = str} -- Hier muss der UserName natürlich ausgepackt werden
-              "[Guess]" -> return clients
-              "[Chat]" -> return clients
-              "[Draw]" -> return clients
-              _ -> return clients
+            printf "%s sends: %s\n" (show (userName from)) (show str)
+            let (order, value) = splitString $ pack str in
+              case order of
+                "[User-Name]:" -> case (state from) of
+                  Uninitialized -> return clients {- $ (setStateAndUserName clients from) : (delete from clients)-}
+                  _ -> return clients 
+                "[Guess]" -> return clients
+                "[Chat]" -> return clients
+                "[Draw]" -> return clients
+                _ -> return clients
             {- mapM (send str) (delete from clients) -}
 
         Register client -> do
             printf "%s entered the game\n" (show client)
-            return $ client' : clients
-              where client' = client { state = Uninitialized } 
+            return client : clients
 
         Unregister client -> do
             printf "%s left the game\n" (show client)
@@ -102,3 +102,7 @@ send message client = do
     let conn = clientHandle client
     hPutStrLn conn message
     hFlush conn
+
+setStateAndUserName :: [Client] -> Client -> String -> Client
+setStateAndUserName [] client value = client {state = Draw, userName = value}
+setStateAndUserName _ client value = client {state = Guess, userName = value}
