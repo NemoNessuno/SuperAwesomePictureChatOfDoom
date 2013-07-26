@@ -44,7 +44,7 @@ instance Eq Client where
 instance Show Client where
   show client = printf "%s:%s" (clientHost client) (show $ clientPort client)
 
-data CState = Draw | Guess | Blocked | Uninitialized
+data CState = Draw | Guess | Blocked | Uninitialized deriving (Show)
 
 data Action = Send Client String | Register Client | Unregister Client
 
@@ -76,11 +76,12 @@ dispatcher ctrl clients objects = do
     clients' <- case action of
 
         Send from str -> do
-            printf "%s sends: %s\n" (show (userName from)) (show str)
+            printf "%s sends: %s he is currently in state: %s\n" (show (userName from)) (show str) (show (state from))
             let (order, value) = splitString $ pack str in
               case order of
-                "[User-Name]:" -> case (state from) of
-                  Uninitialized -> return clients {- $ (setStateAndUserName clients from) : (delete from clients)-}
+                "[User-Name]" -> case (state from) of
+                  Uninitialized ->
+                    return $ (setStateAndUserName clients from value) : (delete from clients)
                   _ -> return clients 
                 "[Guess]" -> return clients
                 "[Chat]" -> return clients
@@ -90,7 +91,7 @@ dispatcher ctrl clients objects = do
 
         Register client -> do
             printf "%s entered the game\n" (show client)
-            return client : clients
+            return $ client : clients
 
         Unregister client -> do
             printf "%s left the game\n" (show client)
