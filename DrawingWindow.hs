@@ -13,6 +13,7 @@ data World = World {
   , worldShape :: Shape
   , worldStartX :: Float
   , worldStartY :: Float
+  , worldState :: String
  }
 
 data Object = Object {
@@ -46,11 +47,12 @@ freshWorld = World {
   worldObjects = [],
   worldShape = SCircle,
   worldStartX = 0,
-  worldStartY = 0
+  worldStartY = 0,
+  worldState = getState
   }
 
 renderWorld :: World -> Picture
-renderWorld world = Pictures $ map renderObject (worldObjects world)
+renderWorld world = Pictures $ (map renderObject (worldObjects world)) ++ [Translate (-390) (270) $ Scale 0.25 0.25 $ Color yellow $ Text $ worldState world]
   where
     renderObject object = Color (objectColor object) $ buildPicture object
 
@@ -84,3 +86,5 @@ handleEvent ev world = case ev of
           (RightButton, Up) -> world { worldObjects = if length (worldObjects world) > 0 then tail (worldObjects world) else worldObjects world }
           _ -> world
     (EventMotion (x, y)) -> world
+
+getState::MVar()->String
