@@ -1,11 +1,12 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module StringSplitter (splitString) where
 
-{-  Incoroprate 4 cases:
- -  [User-Name]
- -  [Chat]
- -  [Draw]
- -  [Guess]
- - -}
+import Data.Text as T
 
 splitString :: String -> (String, String)
-splitString string = 
+splitString (stripPrefix $ pack "[User-Name]" -> Just suf) = ("[User-Name]", unpack $ suf)
+splitString (stripPrefix $ pack "[Chat]" -> Just suf) = ("[Chat]", unpack $ suf)
+splitString (stripPrefix $ pack "[Draw]" -> Just suf) = ("[Draw]", unpack $ suf)
+splitString (stripPrefix $ pack "[Guess]" -> Just suf) = ("[Guess]", unpack $ suf)
+splitString _ = (" ", " ")

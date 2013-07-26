@@ -102,4 +102,3 @@ send message client = do
     let conn = clientHandle client
     hPutStrLn conn message
     hFlush conn
-
