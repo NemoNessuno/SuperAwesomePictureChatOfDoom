@@ -42,7 +42,7 @@ instance Eq Client where
 instance Show Client where
   show client = printf "%s:%s" (clientHost client) (show $ clientPort client)
 
-data CState = Draw | Guess | Blocked
+data CState = Draw | Guess | Blocked | Uninitialized
 
 data Action = Send Client String | Register Client | Unregister Client
 
@@ -74,19 +74,23 @@ dispatcher ctrl clients objects = do
     clients' <- case action of
 
         Send from str -> do
-            printf "%s says: %s\n" (show from) (show str)
+            printf "%s sends: %s\n" (show from) (show str)
             case str of
-            "[User-Name]:" -> undefined
-            "[Guess]" -> undefined
-            "[Chat]" -> undefined
-            "[Draw]" -> undefined
-            mapM (send str) (delete from clients)
-            return clients
+              "[User-Name]:" -> case (state from) of
+                Uninitialized -> return $ delete from clients : from' 
+                  where from' = if clients == [] then from {state = Draw, userName = str} else from {state = Guess, userName = str} -- Hier muss man den UserName natürlich vorher auspacken!
+                _ -> return $ delete from clients : from'
+                  where from' = from {userName = str} -- Hier muss der UserName natürlich ausgepackt werden
+              "[Guess]" -> return clients
+              "[Chat]" -> return clients
+              "[Draw]" -> return clients
+              _ -> return clients
+            {- mapM (send str) (delete from clients) -}
 
         Register client -> do
             printf "%s entered the game\n" (show client)
             return $ client' : clients
-              where client' = if clients == [] then client {state = Draw} else client {state = Guess}
+              where client' = client { state = Uninitialized } 
 
         Unregister client -> do
             printf "%s left the game\n" (show client)
