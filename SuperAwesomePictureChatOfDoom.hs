@@ -11,7 +11,16 @@ import System.Environment
 import System.Exit
 import System.IO
 
-main = getArgs >>= \args ->
+import Control.Concurrent
+
+main = do
+  args <- getArgs
   case args of
-    [host, port, username] -> startClient host port >> showDrawingWindow
-    _ -> getProgName >>= printf "Usage: %s <host> <port> <username>\n"
+      [host, port, username] -> do
+        sendMVar <- newEmptyMVar
+        getMVar <- newEmptyMVar
+        exit <- newEmptyMVar
+        forkIO $ startClient host port getMVar sendMVar
+        forkIO $ showDrawingWindow getMVar sendMVar
+        takeMVar exit
+      _  -> getProgName >>= printf "Usage: %s <host> <port> <username>\n"

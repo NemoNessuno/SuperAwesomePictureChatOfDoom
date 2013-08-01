@@ -8,22 +8,32 @@ import System.Environment
 import System.Exit
 import System.IO
 
-startClient host port = withSocketsDo (handleConnection host (readPortNumber port))
+import Types
+
+startClient:: String -> String -> MVar [Object] -> MVar [Object] -> IO ()
+startClient host port getMVar sendMVar = withSocketsDo (handleConnection host (readPortNumber port) getMVar sendMVar)
 
 readPortNumber = PortNumber . fromIntegral . read
- 
-handleConnection host port = do
+
+handleConnection host port getMVar sendMVar = do
   conn <- connectTo host port
   exit <- newEmptyMVar
-  forkIO $ readFromSendTo exit conn stdout
-  forkIO $ readFromSendTo exit stdin conn
+  forkIO $ readNetwork exit conn getMVar
+  forkIO $ sendNetwork sendMVar conn
   takeMVar exit
 
-readFromSendTo :: MVar () -> Handle -> Handle -> IO ()
-readFromSendTo exit from to = do
-  hIsEOF from >>= \c -> case c of
-    True  -> hClose from >> putMVar exit ()
+readNetwork :: MVar () -> Handle -> MVar [Object] -> IO ()
+readNetwork exit net fromNetVar = do
+  hIsEOF net >>= \bool -> case bool of
+    True -> hClose net >> putMVar exit ()
     False -> do
-      hGetLine from >>= hPutStrLn to
-      hFlush to
-      readFromSendTo exit from to
+      line <- hGetLine net
+      putMVar fromNetVar (read line)
+      readNetwork exit net fromNetVar
+
+sendNetwork :: MVar [Object] -> Handle -> IO ()
+sendNetwork toNetVar net = do
+  toSend <- takeMVar toNetVar
+  hPutStrLn net (show toSend)
+  hFlush net
+  sendNetwork toNetVar net

@@ -15,6 +15,8 @@ import System.Environment
 
 import Text.Printf
 
+import Types
+
 defaultPort = 4711 :: Word16
 
 data Client = Client {
